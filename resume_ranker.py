@@ -1,25 +1,34 @@
 import streamlit as st
-import pandas as pd
-import numpy as np
 import PyPDF2
 import pytesseract
 from PIL import Image
 import spacy
+import re
+from functools import lru_cache
 from sentence_transformers import SentenceTransformer, util
-import torch
 
-# Load NLP model for Named Entity Recognition
-nlp = spacy.load("en_core_web_sm")
+EMAIL_REGEX = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+PHONE_REGEX = re.compile(r"(?:\+?\d{1,3}[\s.-]?)?(?:\(?\d{2,4}\)?[\s.-]?)?\d{3,4}[\s.-]?\d{3,4}")
 
-# Load pre-trained BERT model for embeddings
-bert_model = SentenceTransformer('all-MiniLM-L6-v2')
+
+@lru_cache(maxsize=1)
+def get_nlp_model():
+    # Lazy-load to reduce app startup latency.
+    return spacy.load("en_core_web_sm")
+
+
+@lru_cache(maxsize=1)
+def get_bert_model():
+    # Lazy-load to avoid heavy model initialization at import time.
+    return SentenceTransformer("all-MiniLM-L6-v2")
 
 # Function to extract text from PDF
 def extract_text_from_pdf(pdf_file):
     pdf_reader = PyPDF2.PdfReader(pdf_file)
     text = ""
     for page in pdf_reader.pages:
-        text += page.extract_text() + "\n"
+        page_text = page.extract_text() or ""
+        text += page_text + "\n"
     return text.strip()
 
 # Function to extract text from image (OCR)
@@ -30,7 +39,7 @@ def extract_text_from_image(image_file):
 
 # Function to get BERT embeddings
 def get_embeddings(text):
-    return bert_model.encode(text, convert_to_tensor=True)
+    return get_bert_model().encode(text, convert_to_tensor=True)
 
 # Function to calculate similarity score
 def calculate_similarity(resume_embedding, job_embedding):
@@ -40,7 +49,7 @@ def calculate_similarity(resume_embedding, job_embedding):
 
 # Function to extract key details from resumes using Named Entity Recognition (NER)
 def extract_resume_details(text):
-    doc = nlp(text)
+    doc = get_nlp_model()(text)
     details = {
         "Name": None,
         "Email": None,
@@ -53,14 +62,18 @@ def extract_resume_details(text):
     for ent in doc.ents:
         if ent.label_ == "PERSON" and not details["Name"]:
             details["Name"] = ent.text
-        elif ent.label_ == "EMAIL" and not details["Email"]:
-            details["Email"] = ent.text
-        elif ent.label_ == "PHONE" and not details["Phone"]:
-            details["Phone"] = ent.text
         elif ent.label_ in ["ORG", "WORK_OF_ART"]:
             details["Education"] = ent.text
         elif ent.label_ == "DATE":
             details["Experience"] = ent.text
+
+    email_match = EMAIL_REGEX.search(text)
+    if email_match:
+        details["Email"] = email_match.group(0)
+
+    phone_match = PHONE_REGEX.search(text)
+    if phone_match:
+        details["Phone"] = phone_match.group(0)
             
     return details
 
@@ -72,7 +85,19 @@ def rank_resumes(resumes, job_description):
     ranked_resumes = []
 
     for resume in resumes:
-        text = extract_text_from_pdf(resume) if resume.name.endswith(".pdf") else extract_text_from_image(resume)
+        filename = resume.name.lower()
+        if filename.endswith(".pdf"):
+            text = extract_text_from_pdf(resume)
+        elif filename.endswith((".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".webp")):
+            text = extract_text_from_image(resume)
+        else:
+            st.warning(f"Skipping unsupported file type: {resume.name}")
+            continue
+
+        if not text.strip():
+            st.warning(f"No readable text found in: {resume.name}")
+            continue
+
         resume_embedding = get_embeddings(text)
         score = calculate_similarity(resume_embedding, job_embedding)
         details = extract_resume_details(text)
@@ -85,10 +110,9 @@ def rank_resumes(resumes, job_description):
 
 # Function to check diversity and bias in ranking
 def check_diversity(ranked_resumes):
-    diversity_score = np.random.uniform(0.5, 1.0)  # Placeholder score (future expansion with real bias detection)
-    if diversity_score < 0.7:
-        return "⚠️ Potential bias detected in ranking! Consider reviewing candidate selection."
-    return "✅ Ranking appears fair and unbiased."
+    if not ranked_resumes:
+        return "No resumes were ranked, so diversity could not be assessed."
+    return "Bias check is currently a placeholder. Add a measurable fairness metric before using this in production."
 
 
 
@@ -106,9 +130,11 @@ if st.button("Analyze & Rank Resumes"):
         with st.spinner("Processing resumes..."):
             ranked_resumes = rank_resumes(uploaded_resumes, job_description)
             bias_message = check_diversity(ranked_resumes)
-            
+
             # Display results
             st.subheader("📊 Ranked Resumes")
+            if not ranked_resumes:
+                st.info("No valid resumes could be processed. Please upload supported files with readable text.")
             for i, (details, score) in enumerate(ranked_resumes):
                 st.write(f"**Rank {i+1}: {details.get('Name', 'Unknown')}**")
                 st.write(f"🔹 **Score:** {round(score * 100, 2)}% match")
@@ -128,6 +154,3 @@ if st.button("Analyze & Rank Resumes"):
 st.markdown("---")
 st.write("Built with ❤️ by [Rushikesh Bobade]")
 st.write("[GitHub](https://github.com/rushikesh369/AI-resume-screening-system.git) | [LinkedIn](https://www.linkedin.com/in/rushikesh-bobade-96a69429b/)")
-"""
-This code is a basic implementation of a resume screening and ranking system using Streamlit. It allows users to upload resumes (in PDF or image format) and enter a job description. The system then ranks the resumes based on their similarity to the job description and displays the results along with key details extracted from the resumes using Named Entity Recognition (NER). It also includes a bias check to detect potential bias in the ranking results. The code uses PyPDF2, pytesseract, spaCy, Sentence Transformers, and torch libraries for text extraction, NER, embeddings, and similarity calculation. The final results are displayed using Streamlit components. The code can be further enhanced with additional features, such as real bias detection algorithms, advanced NLP techniques, and improved user interface design.
-"""

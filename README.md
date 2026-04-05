@@ -1,59 +1,64 @@
-# AI-resume-screening-system
-An advanced AI-driven platform designed to revolutionize recruitment. This system uses NLP, OCR, and BERT embeddings to automate resume parsing, ranking, and bias-free evaluation. With a sleek and intuitive web interface built using Streamlit, it ensures faster and smarter hiring decisions.
+# AI Resume Screening System
 
-cat <<EOF > README.md
-# 🤖 AI-Powered Resume Screening and Ranking System  
+Streamlit app that ranks resumes against a job description using sentence embeddings, then displays extracted candidate details.
 
-Transform your recruitment process with this intelligent system designed to streamline resume screening, ensuring efficiency and objectivity in hiring.  
+## Features
 
----
+- Upload multiple resumes in PDF or image formats.
+- Extract text using PDF parsing and OCR.
+- Rank resumes by semantic similarity to a job description.
+- Show extracted fields such as name, email, phone, education, and experience.
 
-## 🌐 Live Demo  
-🔗 Experience the system live: [AI Resume Screening System](https://github.com/rushikesh369/AI-resume-screening-system.git)  
+## Tech Stack
 
----
+- Python 3.10
+- Streamlit
+- spaCy (`en_core_web_sm`)
+- sentence-transformers (`all-MiniLM-L6-v2`)
+- PyPDF2
+- pytesseract + Tesseract OCR
 
-## 📖 About the Project  
-Recruitment can be time-consuming, but this project simplifies the process by:  
-1. 🔍 Extracting vital details (Name, Email, Phone, Skills) from resumes.  
-2. 📊 Comparing resumes to job descriptions using AI-powered embeddings.  
-3. 🏅 Ranking resumes based on relevance to the job description.  
-4. ⚖️ Providing unbiased and diversity-focused selection.  
+## Prerequisites
 
----
+1. Python 3.10+
+2. Tesseract OCR installed on your machine:
+   - Windows: install from the official project and add it to PATH.
+   - macOS: `brew install tesseract`
+   - Ubuntu/Debian: `sudo apt install tesseract-ocr`
 
-## ✨ Features  
-- 📤 Resume Upload: Supports PDF and image formats.  
-- 📝 Job Description Input: Enter or upload job requirements.  
-- 🤖 AI-Powered Ranking: Calculates similarity scores for resumes.  
-- 🧾 Detail Extraction: Automatically extracts critical candidate information.  
-- 🎯 User-Friendly UI: Built with Streamlit for a smooth experience.  
+If Tesseract is installed but not detected on Windows, set the executable path in code (example):
 
----
+```python
+# Example only, uncomment and adjust the path if needed.
+# pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+```
 
-## 🛠️ Tech Stack  
-- Frontend: Streamlit  
-- Backend: Python  
-- Core Libraries:  
-  - 📄 PyPDF2 for extracting text from PDFs.  
-  - 🖼️ Tesseract OCR for image text recognition.  
-  - 🧠 spaCy for Named Entity Recognition (NER).  
-  - 🔥 Sentence Transformers for embedding-based similarity.  
-  - ⚙️ Torch for deep learning computations.  
+## Installation
 
----
+```bash
+git clone https://github.com/rushikesh369/AI-resume-screening-system.git
+cd AI-resume-screening-system
 
-## 🚀 Installation Guide  
+python -m venv .venv
+# Windows PowerShell
+.venv\Scripts\Activate.ps1
 
-### Prerequisites  
-1. Install Python 3.8 or higher.  
-2. Install Tesseract OCR:  
-   - Linux: `sudo apt install tesseract-ocr`  
-   - macOS: `brew install tesseract`  
-   - Windows: [Tesseract OCR Download](https://github.com/tesseract-ocr/tesseract)  
+pip install --upgrade pip
+pip install -r requirements.txt
+python -m spacy download en_core_web_sm
+```
 
-### Steps to Set Up  
-1. Clone the repository:  
-   ```bash
-   git clone https://github.com/rushikesh369/AI-resume-screening-system.git
-   cd AI-resume-screening-system
+## Run
+
+```bash
+streamlit run resume_ranker.py
+```
+
+## Notes
+
+- Current bias/fairness output is a placeholder message and not a production fairness metric.
+- For best OCR quality, use clear, high-resolution resume images.
+
+## Repository
+
+- GitHub: https://github.com/rushikesh369/AI-resume-screening-system
